@@ -1,1 +1,20 @@
+# Byte-compiled / Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
 .env
+
+# Static files coletados para deploy
+staticfiles/
+
+# Database
+db.sqlite3
+
+# VSCode
+.vscode/
+
+# Mac/Windows
+.DS_Store
+Thumbs.db
