@@ -1,1 +1,1 @@
-web: gunicorn Cadastro_Danca_Forro.wsgi
+web: gunicorn qr_checkin.wsgi
