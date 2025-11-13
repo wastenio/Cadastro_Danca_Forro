@@ -11,12 +11,12 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            background-attachment: fixed; /* faz o fundo ficar fixo ao rolar a página */
+            background-attachment: fixed;
             color: #0d3b66;
         }
 
         .card, .event-description {
-            background-color: rgba(255, 255, 255, 0.92); /* transparência para destacar o conteúdo */
+            background-color: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(4px);
         }
         .header {
@@ -81,7 +81,7 @@
             </div>
         {% endif %}
 
-        {% if errors %}
+        {% if form.errors %}
             <div class="alert alert-danger">
                 ⚠️ Corrija os erros abaixo antes de continuar.
             </div>
@@ -119,14 +119,14 @@
     </div>
 
     <div class="footer mt-4">
-        
+        Desenvolvido por Equipe do Evento
     </div>
 </div>
 
 <script>
     setTimeout(() => {
         document.querySelectorAll('.alert').forEach(a => a.remove());
-    }, 5000); // remove alertas após 5 segundos
+    }, 5000);
 
     document.getElementById('id_phone').addEventListener('input', function(e) {
         let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);

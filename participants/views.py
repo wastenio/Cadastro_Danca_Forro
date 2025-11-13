@@ -9,6 +9,8 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.core.mail import EmailMessage
 from django.utils import timezone
+from django.urls import reverse
+from django.db import IntegrityError
 
 
 def register(request):
@@ -16,12 +18,16 @@ def register(request):
         form = ParticipantForm(request.POST)
         if form.is_valid():
             participant = form.save(commit=False)
-            participant.save()
+            try:
+                participant.save()
+            except IntegrityError:
+                # Caso o e-mail já exista, adiciona erro no formulário
+                form.add_error('email', 'Já existe um participante cadastrado com esse e-mail.')
+                return render(request, 'register.html', {'form': form, 'errors': form.errors})
 
-            # 🔹 1. Gerar o QR Code com a URL contendo o UUID
+            # 🔹 1. Gerar QR Code com URL contendo o UUID
             qr_data = request.build_absolute_uri(f"/participants/checkin/{participant.uuid}/")
             img = qrcode.make(qr_data)
-
             buffer = BytesIO()
             img.save(buffer, format='PNG')
             filebuffer = ContentFile(buffer.getvalue())
@@ -54,12 +60,15 @@ def register(request):
             except Exception as e:
                 print("❌ Erro ao enviar o e-mail:", e)
 
-            # 🔹 4. Redirecionar para a página de sucesso
+            # 🔹 4. Redirecionar para página de sucesso
             return redirect(f"{reverse('register')}?success=1")
+
         else:
+            # Formulário inválido
             return render(request, 'register.html', {'form': form, 'errors': form.errors})
 
     else:
+        # GET: renderiza formulário
         form = ParticipantForm()
         success = request.GET.get('success') == '1'
         return render(request, 'register.html', {'form': form, 'success': success})
