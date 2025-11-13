@@ -1,0 +1,138 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Novembro Azul – Inscrição no Evento</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-image: url("{% static 'img/Novembro_Azul.jpeg' %}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed; /* faz o fundo ficar fixo ao rolar a página */
+            color: #0d3b66;
+        }
+
+        .card, .event-description {
+            background-color: rgba(255, 255, 255, 0.92); /* transparência para destacar o conteúdo */
+            backdrop-filter: blur(4px);
+        }
+        .header {
+            background-color: #0d6efd;
+            color: white;
+            padding: 2rem 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        .header h1 {
+            font-weight: 700;
+        }
+        .event-description {
+            background: white;
+            border-left: 5px solid #0d6efd;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5 mb-5">
+    <div class="header shadow-sm mb-4">
+        <h1>Campanha Novembro Azul</h1>
+        <p class="mb-0">Mês de conscientização e prevenção ao câncer de próstata</p>
+        <p>💙 Juntos pela saúde do homem — Novembro Azul 2025</p>
+    </div>
+
+    <div class="event-description shadow-sm">
+        <h5>🎯 Sobre o evento</h5>
+        <p>
+            Participe do nosso encontro especial de conscientização do <strong>Novembro Azul</strong>!  
+            Um momento dedicado à saúde do homem, com palestras informativas, atendimentos gratuitos e distribuição de materiais educativos.
+        </p>
+        <ul>
+            <li><strong>Data:</strong> 22 de novembro de 2025</li>
+            <li><strong>Local:</strong> Av. Carneiro de Mendonça, 1989</li>
+            <li><strong>Local:</strong> Praça da Igreja São José</li>
+            <li><strong>Horário:</strong> 20:30hs</li>
+            <li><strong>Entrada Antecipada:</strong> 5,00</li>
+            <li><strong>Entrada no dia:</strong> 7,00</li>
+            <li><strong>Obs:</strong> Proibido entrada de garrafas de vidros, objetos cortantes.</li>
+        </ul>
+        <p>As vagas são limitadas! Preencha o formulário abaixo para garantir sua inscrição.</p>
+    </div>
+
+    <div class="card shadow-sm p-4">
+        <h3 class="mb-3 text-center text-primary">Formulário de Inscrição</h3>
+
+        {% if success %}
+            <div class="alert alert-success">
+                ✅ <strong>Inscrição realizada com sucesso!</strong><br>
+                Verifique seu e-mail para receber o QRCode de entrada.
+            </div>
+        {% endif %}
+
+        {% if errors %}
+            <div class="alert alert-danger">
+                ⚠️ Corrija os erros abaixo antes de continuar.
+            </div>
+        {% endif %}
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <label for="id_name" class="form-label">Nome completo</label>
+                <input type="text" name="name" class="form-control {% if form.name.errors %}is-invalid{% endif %}" id="id_name" value="{{ form.name.value|default:'' }}">
+                {% for error in form.name.errors %}
+                    <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_email" class="form-label">E-mail</label>
+                <input type="email" name="email" class="form-control {% if form.email.errors %}is-invalid{% endif %}" id="id_email" value="{{ form.email.value|default:'' }}">
+                {% for error in form.email.errors %}
+                    <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_phone" class="form-label">Telefone</label>
+                <input type="tel" name="phone" class="form-control {% if form.phone.errors %}is-invalid{% endif %}" id="id_phone" value="{{ form.phone.value|default:'' }}">
+                {% for error in form.phone.errors %}
+                    <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Enviar inscrição</button>
+        </form>
+    </div>
+
+    <div class="footer mt-4">
+        
+    </div>
+</div>
+
+<script>
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(a => a.remove());
+    }, 5000); // remove alertas após 5 segundos
+
+    document.getElementById('id_phone').addEventListener('input', function(e) {
+        let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+        e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+    });
+</script>
+
+</body>
+</html>

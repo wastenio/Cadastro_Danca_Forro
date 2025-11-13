@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Check-in</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container py-5 text-center">
+        {% if message.status == 'ok' %}
+            <div class="alert alert-success">{{ message.text }}</div>
+        {% elif message.status == 'already' %}
+            <div class="alert alert-warning">{{ message.text }}</div>
+        {% endif %}
+            <h3>{{ participant.name }}</h3>
+            <p>UUID: {{ participant.uuid }}</p>
+    </div>
+</body>
+</html>
