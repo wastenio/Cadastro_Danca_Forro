@@ -61,7 +61,7 @@ def register(request):
                 print("❌ Erro ao enviar o e-mail:", e)
 
             # 🔹 4. Redirecionar para página de sucesso
-            return redirect(f"{reverse('register')}?success=1")
+            return redirect(f"{reverse('participants:register')}?success=1")
 
         else:
             # Formulário inválido
