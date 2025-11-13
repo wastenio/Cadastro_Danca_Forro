@@ -29,7 +29,8 @@ SECRET_KEY = 'django-insecure-^3(i@rpqu4*)#z3dt#-zhu$pc_tr=y84y!a208#)#2yw(mh0ja
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['cadastro-danca-forro.onrender.com', 'localhost', '127.0.0.1']
+
 
 
 # Application definition
