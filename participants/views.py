@@ -15,8 +15,7 @@ from .forms import ParticipantForm
 from .models import Participant
 
 
-MAILTRAP_API_TOKEN = "df5a16d40af66da836b740db864152d4"
-MAILTRAP_API_URL = "https://send.api.mailtrap.io/api/send"
+
 
 
 def register(request):
