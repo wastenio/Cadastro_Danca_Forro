@@ -7,8 +7,7 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 from django.utils import timezone
 from django.http import JsonResponse
-from django.core.mail import EmailMessage
-from django.utils import timezone
+from django.core.mail import EmailMessage, get_connection
 from django.urls import reverse
 from django.db import transaction, IntegrityError
 
@@ -53,31 +52,41 @@ def register(request):
                     'success': False
                 })
 
-            # --------- ENVIAR EMAIL ---------
-            email_subject = 'Confirmação de Inscrição - Evento'
+            # ========= ENVIO DE EMAIL VIA MAILTRAP ========= #
+            email_subject = "Confirmação de Inscrição - Novembro Azul"
             email_body = (
                 f"Olá {participant.name},\n\n"
-                "Sua inscrição foi confirmada!\n"
-                "O QR Code para entrada está em anexo.\n\n"
-                "Até o evento!"
+                "Sua inscrição no evento Novembro Azul foi confirmada!\n"
+                "Apresente o QR Code em anexo na entrada.\n\n"
+                "Atenciosamente,\nEquipe do Evento"
+            )
+
+            # Conexão direta ao Mailtrap (SMTP)
+            connection = get_connection(
+                host="sandbox.smtp.mailtrap.io",
+                port=587,
+                username="4177fd271afb7d",
+                password="15b198c7d01bba",
+                use_tls=True
             )
 
             email = EmailMessage(
-                email_subject,
-                email_body,
-                settings.DEFAULT_FROM_EMAIL,
-                [participant.email],
+                subject=email_subject,
+                body=email_body,
+                from_email="evento@novembroazul.com.br",
+                to=[participant.email],
+                connection=connection,
             )
 
             email.attach(
-                f'{participant.uuid}.png',
+                f"{participant.uuid}.png",
                 buffer_email.getvalue(),
-                'image/png'
+                "image/png"
             )
 
             email.send(fail_silently=False)
 
-            # Redirecionar para evitar reenvio acidental do formulário
+            # Redirecionar para evitar reenvio acidental
             return redirect(f"{reverse('participants:register')}?success=1")
 
         else:
@@ -99,20 +108,27 @@ def register(request):
             'errors': None
         })
 
-    
+
 def checkin_by_uuid(request, uuid):
     participant = get_object_or_404(Participant, uuid=uuid)
     message = None
+
     if participant.checked_in:
-        message = {'status': 'already', 'text': f"{participant.name} já fez check-in em {participant.checked_in_at}."}
+        message = {
+            'status': 'already',
+            'text': f"{participant.name} já fez check-in em {participant.checked_in_at}."
+        }
     else:
         participant.checked_in = True
         participant.checked_in_at = timezone.now()
         participant.save()
-        message = {'status': 'ok', 'text': f"Check-in efetuado para {participant.name}."}
-
+        message = {
+            'status': 'ok',
+            'text': f"Check-in efetuado para {participant.name}."
+        }
 
     return render(request, 'checkin_result.html', {'participant': participant, 'message': message})
+
 
 def validate_qr(request, uuid):
     try:
@@ -126,9 +142,9 @@ def validate_qr(request, uuid):
     except Participant.DoesNotExist:
         data = {'valid': False}
 
-    # ✅ Se quiser exibir no navegador:
+    # Exibir em HTML
     if request.GET.get('html'):
         return render(request, 'checkin.html', {'data': data})
 
-    # ✅ Se quiser usar via leitor ou app (JSON):
+    # Retornar JSON
     return JsonResponse(data)
