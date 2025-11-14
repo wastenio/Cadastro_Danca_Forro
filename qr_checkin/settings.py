@@ -8,6 +8,8 @@ import os
 import dj_database_url
 from dotenv import load_dotenv
 
+load_dotenv()
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Segurança
@@ -64,7 +66,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'qr_checkin.wsgi.application'
 
 # Banco de dados (Render)
-load_dotenv()
+
+
 DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL'),
@@ -111,3 +114,32 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Chave padrão para PKs
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+        'django.security': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+        'django.core.mail': {  # 🔥 LOG DO E-MAIL
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
