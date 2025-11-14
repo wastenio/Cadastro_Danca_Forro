@@ -13,8 +13,8 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Segurança
-SECRET_KEY = 'django-insecure-^3(i@rpqu4*)#z3dt#-zhu$pc_tr=y84y!a208#)#2yw(mh0ja'
-DEBUG = True
+SECRET_KEY = config("SECRET_KEY", default="unsafe-secret-key")
+DEBUG = config("DEBUG", default=True, cast=bool)
 
 ALLOWED_HOSTS = [
     'cadastro-danca-forro.onrender.com',
@@ -30,14 +30,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'participants',
     'import_export',
 ]
 
-# Middlewares (⚠️ Adicionamos o Whitenoise logo após SecurityMiddleware)
+# Middlewares
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # ✅ Adicionado
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve estáticos no Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -51,7 +52,7 @@ ROOT_URLCONF = 'qr_checkin.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],  # Pode adicionar uma pasta "templates" global se quiser
+        'DIRS': [],  # Se quiser usar templates globais, colocar: [BASE_DIR / "templates"]
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -65,9 +66,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'qr_checkin.wsgi.application'
 
-# Banco de dados (Render)
 
-
+# -------------------------------------
+# ⚡ BANCO DE DADOS (Render)
+# -------------------------------------
 DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL'),
@@ -84,37 +86,50 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# E-mail
+
+# -------------------------------------
+# ✉️ CONFIGURAÇÃO DE E-MAIL (MAILTRAP)
+# -------------------------------------
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', cast=int, default=587)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool, default=True)
+EMAIL_HOST = config('EMAIL_HOST')
+EMAIL_PORT = config('EMAIL_PORT', cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
-# Idioma e timezone
+
+# -------------------------------------
+# Idioma e Timezone
+# -------------------------------------
 LANGUAGE_CODE = 'pt-br'
 TIME_ZONE = 'America/Fortaleza'
 USE_I18N = True
 USE_TZ = True
 
-# -------------------------------
-# 🔧 Arquivos estáticos e de mídia
-# -------------------------------
+
+# -------------------------------------
+# Arquivos estáticos e mídia
+# -------------------------------------
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]  # Pasta local com CSS/JS/imagens
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')    # Pasta para coleta e deploy
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static')
+]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Whitenoise: serve arquivos estáticos comprimidos no Render
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Chave padrão para PKs
+
+# Chave padrão
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+
+# -------------------------------------
+# LOGS — Inclui logs de e-mail também
+# -------------------------------------
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -126,17 +141,17 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO',
         },
         'django.request': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'WARNING',
         },
         'django.security': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'WARNING',
         },
-        'django.core.mail': {  # 🔥 LOG DO E-MAIL
+        'django.core.mail': {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,

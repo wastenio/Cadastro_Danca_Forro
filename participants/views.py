@@ -1,27 +1,32 @@
+import base64
+import qrcode
+import requests
+
+from io import BytesIO
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
+from django.conf import settings
+from django.http import JsonResponse
+from django.utils import timezone
+from django.db import transaction, IntegrityError
+from django.core.files.base import ContentFile
+
 from .forms import ParticipantForm
 from .models import Participant
-from django.conf import settings
-import qrcode
-from io import BytesIO
-from django.core.files.base import ContentFile
-from django.utils import timezone
-from django.http import JsonResponse
-from django.core.mail import EmailMessage, get_connection
-from django.urls import reverse
-from django.db import transaction, IntegrityError
+
+
+MAILTRAP_API_TOKEN = "df5a16d40af66da836b740db864152d4"
+MAILTRAP_API_URL = "https://send.api.mailtrap.io/api/send"
 
 
 def register(request):
-    success = False
-    errors = None
-
     if request.method == 'POST':
         form = ParticipantForm(request.POST)
 
         if form.is_valid():
             try:
                 with transaction.atomic():
+
                     # Salvar participante
                     participant = form.save(commit=False)
                     participant.save()
@@ -44,6 +49,9 @@ def register(request):
                     buffer_email = BytesIO()
                     img.save(buffer_email, format='PNG')
 
+                    # Converter QR para base64 (API exige isso)
+                    qr_base64 = base64.b64encode(buffer_email.getvalue()).decode()
+
             except IntegrityError:
                 form.add_error('email', 'Já existe um participante cadastrado com esse e-mail.')
                 return render(request, 'register.html', {
@@ -52,99 +60,103 @@ def register(request):
                     'success': False
                 })
 
-            # ========= ENVIO DE EMAIL VIA MAILTRAP ========= #
-            email_subject = "Confirmação de Inscrição - Novembro Azul"
-            email_body = (
-                f"Olá {participant.name},\n\n"
-                "Sua inscrição no evento Novembro Azul foi confirmada!\n"
-                "Apresente o QR Code em anexo na entrada.\n\n"
-                "Atenciosamente,\nEquipe do Evento"
-            )
+            # ========= ENVIO VIA MAILTRAP API HTTP ========= #
 
-            # Conexão direta ao Mailtrap (SMTP)
-            connection = get_connection(
-                host="sandbox.smtp.mailtrap.io",
-                port=587,
-                username="4177fd271afb7d",
-                password="15b198c7d01bba",
-                use_tls=True
-            )
+            payload = {
+                "from": {
+                    "email": "no-reply@novembroazul.com.br",
+                    "name": "Evento Novembro Azul"
+                },
+                "to": [
+                    {"email": participant.email}
+                ],
+                "subject": "Confirmação de Inscrição - Novembro Azul",
+                "text": (
+                    f"Olá {participant.name},\n\n"
+                    "Sua inscrição no evento Novembro Azul foi confirmada!\n"
+                    "Apresente o QR Code em anexo na entrada.\n\n"
+                    "Atenciosamente,\nEquipe do Evento"
+                ),
+                "attachments": [
+                    {
+                        "filename": f"{participant.uuid}.png",
+                        "content": qr_base64,
+                        "type": "image/png"
+                    }
+                ]
+            }
 
-            email = EmailMessage(
-                subject=email_subject,
-                body=email_body,
-                from_email="evento@novembroazul.com.br",
-                to=[participant.email],
-                connection=connection,
-            )
+            headers = {
+                "Authorization": f"Bearer {MAILTRAP_API_TOKEN}",
+                "Content-Type": "application/json"
+            }
 
-            email.attach(
-                f"{participant.uuid}.png",
-                buffer_email.getvalue(),
-                "image/png"
-            )
+            response = requests.post(MAILTRAP_API_URL, json=payload, headers=headers)
 
-            email.send(fail_silently=False)
+            # Checar envio
+            if response.status_code not in [200, 202]:
+                return render(request, "register.html", {
+                    "form": form,
+                    "errors": {"email": "Erro ao enviar e-mail. Tente novamente."},
+                    "success": False
+                })
 
-            # Redirecionar para evitar reenvio acidental
             return redirect(f"{reverse('participants:register')}?success=1")
 
         else:
-            # Form inválido
             return render(request, 'register.html', {
                 'form': form,
                 'errors': form.errors,
                 'success': False
             })
 
-    # ---------- MÉTODO GET ----------
-    else:
-        form = ParticipantForm()
-        success = request.GET.get('success') == '1'
+    # GET
+    form = ParticipantForm()
+    success = request.GET.get('success') == '1'
 
-        return render(request, 'register.html', {
-            'form': form,
-            'success': success,
-            'errors': None
-        })
+    return render(request, 'register.html', {
+        'form': form,
+        'success': success,
+        'errors': None
+    })
 
 
 def checkin_by_uuid(request, uuid):
     participant = get_object_or_404(Participant, uuid=uuid)
-    message = None
 
     if participant.checked_in:
         message = {
-            'status': 'already',
-            'text': f"{participant.name} já fez check-in em {participant.checked_in_at}."
+            "status": "already",
+            "text": f"{participant.name} já fez check-in em {participant.checked_in_at}."
         }
     else:
         participant.checked_in = True
         participant.checked_in_at = timezone.now()
         participant.save()
         message = {
-            'status': 'ok',
-            'text': f"Check-in efetuado para {participant.name}."
+            "status": "ok",
+            "text": f"Check-in efetuado para {participant.name}."
         }
 
-    return render(request, 'checkin_result.html', {'participant': participant, 'message': message})
+    return render(request, "checkin_result.html", {
+        "participant": participant,
+        "message": message
+    })
 
 
 def validate_qr(request, uuid):
     try:
         participant = Participant.objects.get(uuid=uuid)
         data = {
-            'valid': True,
-            'name': participant.name,
-            'checked_in': participant.checked_in,
-            'checked_in_at': participant.checked_in_at,
+            "valid": True,
+            "name": participant.name,
+            "checked_in": participant.checked_in,
+            "checked_in_at": participant.checked_in_at,
         }
     except Participant.DoesNotExist:
-        data = {'valid': False}
+        data = {"valid": False}
 
-    # Exibir em HTML
-    if request.GET.get('html'):
-        return render(request, 'checkin.html', {'data': data})
+    if request.GET.get("html"):
+        return render(request, "checkin.html", {"data": data})
 
-    # Retornar JSON
     return JsonResponse(data)
