@@ -12,17 +12,19 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# --------------------------
 # Segurança
+# --------------------------
 SECRET_KEY = config("SECRET_KEY", default="unsafe-secret-key")
-DEBUG = config("DEBUG", default=True, cast=bool)
+DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = [
-    'cadastro-danca-forro.onrender.com',
-    'localhost',
-    '127.0.0.1'
-]
+# Railway recomenda configurar ALLOWED_HOSTS via variável
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="127.0.0.1,localhost").split(",")
 
+
+# --------------------------
 # Apps
+# --------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -35,10 +37,12 @@ INSTALLED_APPS = [
     'import_export',
 ]
 
+# --------------------------
 # Middlewares
+# --------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve estáticos no Render
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve arquivos estáticos no Railway
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -52,7 +56,7 @@ ROOT_URLCONF = 'qr_checkin.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],  # Se quiser usar templates globais, colocar: [BASE_DIR / "templates"]
+        'DIRS': [], 
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -67,18 +71,22 @@ TEMPLATES = [
 WSGI_APPLICATION = 'qr_checkin.wsgi.application'
 
 
-# -------------------------------------
-# ⚡ BANCO DE DADOS (Render)
-# -------------------------------------
+# --------------------------
+# Banco de Dados (Railway)
+# --------------------------
+# Usa DATABASE_URL injetado pelo Railway
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL'),
+        default=config("DATABASE_URL"),
         conn_max_age=600,
-        ssl_require=True
+        ssl_require=False  # No Railway não pode usar SSL interno
     )
 }
 
+
+# --------------------------
 # Validação de senha
+# --------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -87,9 +95,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# -------------------------------------
-# ✉️ CONFIGURAÇÃO DE E-MAIL (MAILTRAP)
-# -------------------------------------
+# --------------------------
+# Email (Mailtrap ou outro)
+# --------------------------
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = config('EMAIL_HOST')
 EMAIL_PORT = config('EMAIL_PORT', cast=int)
@@ -99,37 +107,38 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
 
-# -------------------------------------
-# Idioma e Timezone
-# -------------------------------------
+# --------------------------
+# Idioma e timezone
+# --------------------------
 LANGUAGE_CODE = 'pt-br'
 TIME_ZONE = 'America/Fortaleza'
 USE_I18N = True
 USE_TZ = True
 
 
-# -------------------------------------
+# --------------------------
 # Arquivos estáticos e mídia
-# -------------------------------------
+# --------------------------
 STATIC_URL = '/static/'
+
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static')
 ]
+
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-
-# Chave padrão
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# -------------------------------------
-# LOGS — Inclui logs de e-mail também
-# -------------------------------------
+# --------------------------
+# Logs
+# --------------------------
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
