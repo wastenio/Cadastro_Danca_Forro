@@ -14,10 +14,6 @@ from django.core.files.base import ContentFile
 from .forms import ParticipantForm
 from .models import Participant
 
-
-
-
-
 def register(request):
     if request.method == 'POST':
         form = ParticipantForm(request.POST)
