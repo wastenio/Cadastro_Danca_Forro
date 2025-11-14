@@ -18,37 +18,38 @@ def register(request):
         form = ParticipantForm(request.POST)
 
         if form.is_valid():
-            # 🔹 Envolve toda a operação crítica em uma transação
             try:
                 with transaction.atomic():
                     participant = form.save(commit=False)
-                    participant.save()  # pode disparar IntegrityError
-
-                    # 🔹 1. Gerar QR Code
-                    qr_data = request.build_absolute_uri(f"/participants/checkin/{participant.uuid}/")
-                    img = qrcode.make(qr_data)
-                    buffer = BytesIO()
-                    img.save(buffer, format='PNG')
-                    filebuffer = ContentFile(buffer.getvalue())
-
-                    # 🔹 2. Salvar QR Code no modelo
-                    participant.qr_code.save(f'{participant.uuid}.png', filebuffer)
                     participant.save()
+
+                    qr_data = request.build_absolute_uri(f"/participants/checkin/{participant.uuid}/")
+
+                    # GERAR QR CODE
+                    img = qrcode.make(qr_data)
+
+                    # BUFFER PARA SALVAR NO MODELO
+                    buffer_model = BytesIO()
+                    img.save(buffer_model, format='PNG')
+                    participant.qr_code.save(f"{participant.uuid}.png", ContentFile(buffer_model.getvalue()))
+
+                    # BUFFER PARA ANEXO DO EMAIL (SEPARADO!)
+                    buffer_email = BytesIO()
+                    img.save(buffer_email, format='PNG')
 
             except IntegrityError:
                 form.add_error('email', 'Já existe um participante cadastrado com esse e-mail.')
                 return render(request, 'register.html', {'form': form, 'errors': form.errors})
 
-            # 🔹 3. Enviar e-mail (fora da transação!)
+            # ---------- ENVIAR EMAIL ----------
             email_subject = 'Confirmação de Inscrição - Evento'
             email_body = f"""
             Olá {participant.name},
 
-            Sua inscrição foi confirmada com sucesso! 
-            Apresente o QR Code em anexo no dia do evento para realizar seu check-in.
+            Sua inscrição foi confirmada!
+            O QR Code para entrada está em anexo.
 
-            Atenciosamente,
-            Equipe do Evento
+            Até o evento!
             """
 
             email = EmailMessage(
@@ -58,27 +59,24 @@ def register(request):
                 [participant.email],
             )
 
-            # anexa QR code ao email
-            email.attach(f'{participant.uuid}.png', buffer.getvalue(), 'image/png')
+            # Anexar usando o buffer correto
+            email.attach(
+                f'{participant.uuid}.png',
+                buffer_email.getvalue(),
+                'image/png'
+            )
 
-            try:
-                email.send(fail_silently=False)
-            except Exception as e:
-                print("❌ Erro ao enviar o e-mail:", e)
-                # opcional: armazenar erro em log
+            email.send(fail_silently=False)
 
-            # 🔹 4. Sucesso → redireciona
             return redirect(f"{reverse('participants:register')}?success=1")
 
-        else:
-            # Form inválido
-            return render(request, 'register.html', {'form': form, 'errors': form.errors})
+        return render(request, 'register.html', {'form': form, 'errors': form.errors})
 
     else:
-        # GET
         form = ParticipantForm()
         success = request.GET.get('success') == '1'
         return render(request, 'register.html', {'form': form, 'success': success})
+
     
 def checkin_by_uuid(request, uuid):
     participant = get_object_or_404(Participant, uuid=uuid)
