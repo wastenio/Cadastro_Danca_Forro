@@ -10,33 +10,36 @@ from django.http import JsonResponse
 from django.core.mail import EmailMessage
 from django.utils import timezone
 from django.urls import reverse
-from django.db import IntegrityError
+from django.db import transaction, IntegrityError
 
 
 def register(request):
     if request.method == 'POST':
         form = ParticipantForm(request.POST)
+
         if form.is_valid():
-            participant = form.save(commit=False)
+            # 🔹 Envolve toda a operação crítica em uma transação
             try:
-                participant.save()
+                with transaction.atomic():
+                    participant = form.save(commit=False)
+                    participant.save()  # pode disparar IntegrityError
+
+                    # 🔹 1. Gerar QR Code
+                    qr_data = request.build_absolute_uri(f"/participants/checkin/{participant.uuid}/")
+                    img = qrcode.make(qr_data)
+                    buffer = BytesIO()
+                    img.save(buffer, format='PNG')
+                    filebuffer = ContentFile(buffer.getvalue())
+
+                    # 🔹 2. Salvar QR Code no modelo
+                    participant.qr_code.save(f'{participant.uuid}.png', filebuffer)
+                    participant.save()
+
             except IntegrityError:
-                # Caso o e-mail já exista, adiciona erro no formulário
                 form.add_error('email', 'Já existe um participante cadastrado com esse e-mail.')
                 return render(request, 'register.html', {'form': form, 'errors': form.errors})
 
-            # 🔹 1. Gerar QR Code com URL contendo o UUID
-            qr_data = request.build_absolute_uri(f"/participants/checkin/{participant.uuid}/")
-            img = qrcode.make(qr_data)
-            buffer = BytesIO()
-            img.save(buffer, format='PNG')
-            filebuffer = ContentFile(buffer.getvalue())
-
-            # 🔹 2. Salvar o QR Code no modelo
-            participant.qr_code.save(f'{participant.uuid}.png', filebuffer)
-            participant.save()
-
-            # 🔹 3. Enviar e-mail com QR Code
+            # 🔹 3. Enviar e-mail (fora da transação!)
             email_subject = 'Confirmação de Inscrição - Evento'
             email_body = f"""
             Olá {participant.name},
@@ -47,28 +50,32 @@ def register(request):
             Atenciosamente,
             Equipe do Evento
             """
+
             email = EmailMessage(
                 email_subject,
                 email_body,
                 settings.DEFAULT_FROM_EMAIL,
                 [participant.email],
             )
+
+            # anexa QR code ao email
             email.attach(f'{participant.uuid}.png', buffer.getvalue(), 'image/png')
 
             try:
                 email.send(fail_silently=False)
             except Exception as e:
                 print("❌ Erro ao enviar o e-mail:", e)
+                # opcional: armazenar erro em log
 
-            # 🔹 4. Redirecionar para página de sucesso
+            # 🔹 4. Sucesso → redireciona
             return redirect(f"{reverse('participants:register')}?success=1")
 
         else:
-            # Formulário inválido
+            # Form inválido
             return render(request, 'register.html', {'form': form, 'errors': form.errors})
 
     else:
-        # GET: renderiza formulário
+        # GET
         form = ParticipantForm()
         success = request.GET.get('success') == '1'
         return render(request, 'register.html', {'form': form, 'success': success})
